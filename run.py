@@ -14,6 +14,7 @@ def getLinks(site, prefix):
     return links_list
 
 def strvar(i):
+    """Appends zeros to the left of an integer i to use in the html file names"""
     s = str(i)
     if i <= 9:
         s = '00'+s
@@ -22,9 +23,14 @@ def strvar(i):
     return s
 
 def compileREs(page):
+    """Compiles regular expressions used in the function stripText"""
     pats = {}
+
+    # Search for title
     pat = re.compile(r'<title.*?title>', flags=re.M|re.DOTALL)
     pats['title'] = pat
+
+    # REs for reducing-suffering articles
     if page == 'rs':
         # Initial comments
         pat = re.compile(r'^.*?<html lang="en-US">', flags=re.DOTALL)
@@ -42,6 +48,7 @@ def compileREs(page):
         pat = re.compile(r'<footer id.*?<\/footer>', flags=re.DOTALL)
         pats['footer'] = pat
 
+    # REs for fri articles
     if page == 'fri':
         # Remove  navbar 
         pat = re.compile(r'<nav class=.*?</nav>', flags=re.DOTALL)
@@ -66,6 +73,7 @@ def compileREs(page):
     return pats
 
 def stripText(text, page, pats):
+    """Removes all unnecessary elements from html files (headers, footers, social media etc)"""
     # Remove title
     text = re.sub(pats['title'], '', text)
 
@@ -99,21 +107,15 @@ def stripText(text, page, pats):
         text = re.sub(pats['social'], '', text)
     return text
 
-def getTitle(text, page):
-    if page == 'rs':
-      pat = r'<title>(.+?)\|'
-    if page == 'fri':
-      pat = r'<title>(.+?)&'
-    title  = re.search(pat, text).group(1)
-    pattern = re.compile('[\W_]+')
-    title = pattern.sub('',title)
-    return title
-
 def fixArticleTOC(text, title):
+    """ Make each entry in article TOC unique so that it links to the correct
+    section within the current article (and not to a different article)"""
 
+    # Extract TOC
     pat = r'<div id="toc_container"[\s\S]*?</div>'
     toc = re.search(pat, text).group()
 
+    # Make TOC entries unique by appending #article-title
     pat2 = r'"#([\s\S]*?")'
     repl = lambda m: '"#' + title+'-'+m.group(1)
     toc_new = re.sub(pat2, repl, toc)
@@ -123,7 +125,7 @@ def fixArticleTOC(text, title):
     repl = lambda m: m.group(1) + title+'-'+m.group(2)
     text = re.sub(pat3, repl, text)
 
-    # Convert title to h1 to make it linkable
+    # Convert article title to h1 to make it linkable
     pat0 = r'<h1([\s\S]*?)</h1>'
     repl = lambda m: '<h1 id = \"' + title +"\""+ m.group(1) + '</h1>'
     text = re.sub(pat0, repl, text)
@@ -131,11 +133,13 @@ def fixArticleTOC(text, title):
     return text
 
 def downloadAndSaveLinksToHtml(links,titles,folder):
+    """ Downloads all articles and saves them as html files in folder"""
+
     for i,(l,t) in enumerate(zip(links,titles)):
         fname = strvar(i) + '-' + t + '.html'
         # Download article from website
         if not os.path.isfile(folder + '/' + fname):
-            print "downloading ", t
+            print "downloading", t
             req = urllib2.Request(l, headers={'User-Agent' : "Magic Browser"}) 
             con = urllib2.urlopen(req)
             # This is necessary because the urls sometimes redirect to different pages
@@ -148,13 +152,16 @@ def downloadAndSaveLinksToHtml(links,titles,folder):
         
 
 def stripHtmlFiles(folder):
-    folder_stripped = folder + '_stripped'
-    if not os.path.exists('./'+folder_stripped):
-        os.makedirs('./'+folder_stripped)
+    """ Get rid of unnecessary html elements; keep only text and important stuff """
+
+    folder_clean = 'html-clean'
+    if not os.path.exists('./'+folder_clean):
+        os.makedirs('./'+folder_clean)
 
     for f in glob.glob(folder + "/*"):
         fname = os.path.basename(f)
-        if not os.path.isfile(folder_stripped + '/' + fname):
+        # If file exists in folder_clean, don't strip it
+        if not os.path.isfile(folder_clean + '/' + fname):
             fhtml = open(f,'r')
             text = fhtml.read()
             pat = r'<link rel="canonical" href="(.*)"'
@@ -163,17 +170,16 @@ def stripHtmlFiles(folder):
                 page = 'rs'
             if 'foundational-research' in url:
                 page = 'fri'
-            print "stripping ", fname
+            print "stripping", fname
             pats = compileREs(page)
             text = stripText(text, page, pats)
             title = re.search(r'-(.*?).html',fname).group(1)
-            print "title: ", title
             text = fixArticleTOC(text,title)
-            fstrip = open(folder_stripped + '/' + fname ,"w")
+            fstrip = open(folder_clean + '/' + fname ,"w")
             fstrip.write(text)
             fstrip.close()
         else:
-            print "skipping ", fname
+            print "skipping", fname
 
 def getTOC(text):
     pat = r'(<h2>Introduction</h2>[\s\S]*)<h2 id="Other">Other</h2>'
@@ -185,16 +191,15 @@ def getTOC(text):
     toc = re.sub(pat, repl, toc)
 
     # Remove translations
+    pat_trans= r'(<li>.*?)<span class="smaller">[\s\S]*?</span>'
+    repl = lambda m: m.group(1)+'</li>'
+    toc = re.sub(pat_trans, repl, toc)
     pat_trans= r'(<li>.*?)\([\s\S]*?</li>'
     repl = lambda m: m.group(1)+'</li>'
     toc = re.sub(pat_trans, repl, toc)
 
-    # One special case:
-    toc = re.sub(r'Kring et al\.', r'Kring et al. (2013)</a>', toc)
-
     return toc
 
-i = 0
 def updateTOC(toc):
     # Remove "http:/foundational-research.org/" prefix
     pat = r'href=(.*)/([a-zA-Z-]*/)'
@@ -211,68 +216,46 @@ def updateTOC(toc):
     toc = re.sub(pat, repl, toc)
 
     pat = r'href="([\s\S]*?)"'
-    titles_dash = re.findall(pat,toc)
-
-    pat = r'href="[\s\S]*?>([\s\S]*?)<'
     titles= re.findall(pat,toc)
 
-    return titles_dash, titles, toc
+    return titles, toc
 
-def mergeFiles(ebook_name, folder, header, toc, footer):
-    ebook = open(ebook_name,'w')
-    ebook.write(header)
-    ebook.write(toc)
-    for f in glob.glob(folder + "/*"):
-        f = open(f)
-        text = f.read()
-        f.close()
-        ebook.write(text)
-    ebook.write(footer)
-    ebook.close()
-
-def createSeparateTOC(folder, titles, titles_dash):
-    toc_template = open('toc_template.html','r')
-    toc_text = toc_template.read()
-    toc_template.close()
-    toc_content = ''
-    for t, td in zip(titles, glob.glob(folder + "/*")):
-        toc_content += '<a href=\"' + td[len(folder)+1:] + '\">'+t+'</a></br>\n'
-
-    pat = r'TOC'
-    toc_text = re.sub(pat,toc_content,toc_text)
-    toc = open('toc_sep.html','w')
-    toc.write(toc_text)
-    toc.close()
-    
 if __name__ == '__main__':
     url = 'http://reducing-suffering.org/'
-    folder = 'bt'
-    ebook_name = 'reducing-suffering.html'
+    folder = 'html-raw'
     
     parser = argparse.ArgumentParser()
-    parser.add_argument('-d','--download', metavar='download', type=int,default=1)
-    parser.add_argument('-m','--merge', metavar='merge', type=int,default=0)
+    parser.add_argument('-d','--download', metavar='download', type=int,default=1,\
+                        help='Crawl and download source files from reducing-suffering.org')
+
     args = parser.parse_args()
 
+    # Create folder for raw html source files
     if not os.path.exists('./'+folder):
         os.makedirs('./'+folder)
 
+    # Open website and read content
     response = urllib2.urlopen(url)
     text = response.read()
+
+    # Get Table of Contents (TOC)
     toc = getTOC(text)
+
+    # Extract links from TOC
     links = getLinks(toc,url)
-    titles_dash, titles, toc = updateTOC(toc)
+    
+    # Update TOC to use filenames instead of regular links
+    i = 0
+    titles, toc = updateTOC(toc)
+
+    # Write TOC to a separate file
     Html_file= open('toc.html',"w")
     Html_file.write(toc)
     Html_file.close()
+
+    # Crawl reducing-suffering.org and download all articles
     if args.download:
-        downloadAndSaveLinksToHtml(links,titles_dash,folder)
+        downloadAndSaveLinksToHtml(links,titles,folder)
+
+    # Get rid of unnecessary html elements
     stripHtmlFiles(folder)
-    with open('header.html','r') as h:
-        header = h.read()
-    with open('footer.html','r') as f:
-        footer = f.read()
-    if args.merge == 1:
-        mergeFiles(ebook_name, folder, header, toc, footer)
-    else:
-        createSeparateTOC(folder, titles, titles_dash)
