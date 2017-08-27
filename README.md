@@ -5,6 +5,7 @@ This simple Python script generates the source files to create an ebook containi
 ## Prerequisites
 
 Python 2
+[Calibre](calibre-ebook.com)
 
 ## Running the script
 
