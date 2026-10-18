@@ -1,0 +1,37 @@
+/* Stylesheet for the EPUB. Kept deliberately simple: e-readers apply their own
+   fonts and margins, so we only set structure and a few niceties. */
+
+body { line-height: 1.45; }
+
+h1, h2, h3, h4, h5, h6 { line-height: 1.25; page-break-after: avoid; break-after: avoid; }
+h1.part { text-align: center; margin-top: 30%; font-size: 1.9em; }
+h2.topic { text-align: center; margin-top: 20%; font-size: 1.5em; }
+h3, section.level3 > h3 { font-size: 1.35em; margin-top: 0.5em; }
+h4 { font-size: 1.15em; margin-top: 1.4em; }
+h5 { font-size: 1.05em; margin-top: 1.2em; }
+h6, p.minor-heading { font-size: 1em; font-weight: bold; font-style: italic; margin-top: 1em; }
+
+div.byline p { margin: 0; font-style: italic; font-size: 0.9em; text-indent: 0; }
+div.source p { margin: 0.2em 0 1.2em 0; font-size: 0.8em; text-indent: 0; word-wrap: break-word; overflow-wrap: break-word; }
+
+div.essay-contents { margin: 1em 0 1.5em 0; padding: 0.4em 0.8em; border: 1px solid #999; border-radius: 4px; font-size: 0.9em; }
+div.essay-contents-title p { font-weight: bold; margin: 0.2em 0; }
+div.essay-contents ul { margin: 0.2em 0; padding-left: 1.2em; }
+
+blockquote { margin: 1em 1.2em; font-size: 0.95em; }
+
+img { max-width: 100%; height: auto; display: block; margin: 0.8em auto 0.3em auto; }
+figure { margin: 1em 0; text-align: center; }
+div.image-credit p { font-size: 0.7em; color: #666; text-align: center; margin-top: 0; text-indent: 0; }
+
+table { border-collapse: collapse; margin: 1em 0; font-size: 0.85em; }
+th, td { border: 1px solid #aaa; padding: 0.2em 0.4em; vertical-align: top; }
+
+pre, code { font-size: 0.85em; white-space: pre-wrap; word-wrap: break-word; }
+
+a { word-wrap: break-word; overflow-wrap: break-word; }
+
+section.footnotes, ol#footnotes { font-size: 0.85em; }
+
+div.see-also p, div.resource-group p { font-style: italic; }
+div.resource-group p { font-weight: bold; margin-top: 1.2em; }
